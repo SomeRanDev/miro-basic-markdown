@@ -24,6 +24,7 @@ export default defineConfig({
       input: allHtmlEntries,
     },
   },
+  base: "./",
   plugins: [react()],
   server: {
     port: 3000,
