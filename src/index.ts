@@ -77,7 +77,9 @@ async function forEachItemWithContent(items: Item[], callback: (item: ContentIte
 
 async function initIconClick() {
 	await miro.board.ui.on('icon:click', async () => {
-		await miro.board.ui.openPanel({ url: 'app.html' });
+		await miro.board.ui.openPanel({
+			url: 'app.html'
+		});
 	});
 }
 
@@ -108,9 +110,7 @@ async function initSelectionEvents() {
 			if(!isContentItem(item)) return;
 			if(!event.items.some(oldItem => oldItem.id === item.id) && await hasMarkdownEnabled(item)) {
 				await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
-				const r = convertTextToMarkdown(getItemContent(item));
-				setItemContent(item, r);
-				console.log(r);
+				setItemContent(item, convertTextToMarkdown(getItemContent(item), item.type === "text"));
 				await item.sync();
 			}
 		});
@@ -225,25 +225,40 @@ async function onMarkdownDisable(event: CustomEvent) {
  * @param text The "markdown" format text to convert.
  * @returns The HTML/emoji output text.
  */
-function convertTextToMarkdown(text: string): string {
-	const inputLines: string[] = text.split(/[\n|<br>|&nbsp;]+/gi);
+function convertTextToMarkdown(text: string, isText: boolean): string {
+	let inputLines: string[] = text.split(/(?:\n|\<br\>|&nbsp;)+/gi);
+	if(inputLines.length === 1) {
+		inputLines = inputLines[0]
+			.replaceAll(/<p>(.+?)<\/p>/gi, "$1\n")
+			.replaceAll(/(<\/ol>|<\/ul>|<\/li>)/gi, "$1\n")
+			.split(/\n/);
+	}
 	const outputLines: string[] = [];
 
 	let liLines: string[] = [];
+	let liSpaces = "";
 
 	function processLine(line: string | null) {
-		if(line !== null && line.match(/^\s*\*/)) {
-			liLines.push(convertLineToMarkdown(line));
+		const processedLine = line !== null ? convertLineToMarkdown(line) : null;
+		if(processedLine !== null && processedLine.match(/^\s*\*/)) {
+			const [_, spaces] = processedLine.match(/^(\s*)\*/)!;
+			liLines.push(processedLine.replace(spaces + "*", ""));
+			if(liSpaces.length === 0) liSpaces = spaces;
 			return;
 		} else if(liLines.length > 0) {
-			outputLines.push("<ul>");
-			liLines.forEach(li => outputLines.push(`<li>${li}</li>`));
-			outputLines.push("</ul>");
+			liLines.forEach(li => outputLines.push(`${liSpaces}• ${li}`));
 			liLines = [];
+			liSpaces = "";
 		}
 
-		if(line !== null) {
-			outputLines.push(convertLineToMarkdown(line));
+		if(processedLine !== null) {
+			if(processedLine.endsWith("</ol>") || processedLine.endsWith("</ul>") || processedLine.endsWith("</li>")) {
+				outputLines.push(processedLine);
+			} else if(isText) {
+				outputLines.push(`<p>${processedLine}</p>`);
+			} else {
+				outputLines.push(`${processedLine}`);
+			}
 		}
 	}
 
@@ -253,22 +268,25 @@ function convertTextToMarkdown(text: string): string {
 	}
 	processLine(null);
 
-	return outputLines.join("&nbsp;");
+	// TODO: What is the right way to join the lines?
+	// &nbsp; definitely bad
+	// <br/> or \n?
+	return isText ? outputLines.join("") : outputLines.join("<br/>");
 }
 
 function convertLineToMarkdown(text: string): string {
 	return text
 		// _underline_
-		.replaceAll(/_([a-zA-Z0-9\s\*]+)_/gi, "<u>$1</u>")
+		.replaceAll(/_([^_]+)_/gi, "<u>$1</u>")
 
 		// **bold**
-		.replaceAll(/\*\*([a-zA-Z0-9\s_]+)\*\*/gi, "<b>$1</b>")
+		.replaceAll(/\*\*([^\*]+)\*\*/gi, "<b>$1</b>")
 
 		// *italic*
-		.replaceAll(/\*([a-zA-Z0-9\s_]+)\*/gi, "<em>$1</em>")
+		.replaceAll(/\*([^\*]+)\*/gi, "<em>$1</em>")
 
 		// ~strikethrough~
-		.replaceAll(/\~([a-zA-Z0-9\s]+)\~/gi, "<s>$1</s>")
+		.replaceAll(/\~([^~]+)\~/gi, "<s>$1</s>")
 
 		// [ ] unchecked
 		.replaceAll(/\[ \]/gi, "🔲")
