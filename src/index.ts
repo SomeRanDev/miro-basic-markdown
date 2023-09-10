@@ -108,7 +108,9 @@ async function initSelectionEvents() {
 			if(!isContentItem(item)) return;
 			if(!event.items.some(oldItem => oldItem.id === item.id) && await hasMarkdownEnabled(item)) {
 				await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
-				setItemContent(item, convertTextToMarkdown(getItemContent(item)));
+				const r = convertTextToMarkdown(getItemContent(item));
+				setItemContent(item, r);
+				console.log(r);
 				await item.sync();
 			}
 		});
@@ -224,13 +226,55 @@ async function onMarkdownDisable(event: CustomEvent) {
  * @returns The HTML/emoji output text.
  */
 function convertTextToMarkdown(text: string): string {
+	const inputLines: string[] = text.split(/[\n|<br>|&nbsp;]+/gi);
+	const outputLines: string[] = [];
+
+	let liLines: string[] = [];
+
+	function processLine(line: string | null) {
+		if(line !== null && line.match(/^\s*\*/)) {
+			liLines.push(convertLineToMarkdown(line));
+			return;
+		} else if(liLines.length > 0) {
+			outputLines.push("<ul>");
+			liLines.forEach(li => outputLines.push(`<li>${li}</li>`));
+			outputLines.push("</ul>");
+			liLines = [];
+		}
+
+		if(line !== null) {
+			outputLines.push(convertLineToMarkdown(line));
+		}
+	}
+
+	for(let i = 0; i < inputLines.length; i++) {
+		const input = inputLines[i];
+		processLine(input);
+	}
+	processLine(null);
+
+	return outputLines.join("&nbsp;");
+}
+
+function convertLineToMarkdown(text: string): string {
 	return text
+		// _underline_
 		.replaceAll(/_([a-zA-Z0-9\s\*]+)_/gi, "<u>$1</u>")
-		.replaceAll(/\*([a-zA-Z0-9\s_]+)\*/gi, "<b>$1</b>")
+
+		// **bold**
+		.replaceAll(/\*\*([a-zA-Z0-9\s_]+)\*\*/gi, "<b>$1</b>")
+
+		// *italic*
+		.replaceAll(/\*([a-zA-Z0-9\s_]+)\*/gi, "<em>$1</em>")
+
+		// ~strikethrough~
 		.replaceAll(/\~([a-zA-Z0-9\s]+)\~/gi, "<s>$1</s>")
+
+		// [ ] unchecked
 		.replaceAll(/\[ \]/gi, "🔲")
-		.replaceAll(/\[x\]/gi, "✅")
-		.replaceAll(/((?:\n|<br>|&nbsp;)\s*)\* /gi, "$1• ")
+
+		// [x] checked
+		.replaceAll(/\[x\]/gi, "✅");
 }
 
 /* allowed tags:
