@@ -228,10 +228,13 @@ async function onMarkdownDisable(event: CustomEvent) {
 function convertTextToMarkdown(text: string, isText: boolean): string {
 	let inputLines: string[] = text.split(/(?:\n|\<br\>|&nbsp;)+/gi);
 	if(inputLines.length === 1) {
-		inputLines = inputLines[0]
-			.replaceAll(/<p>(.+?)<\/p>/gi, "$1\n")
-			.replaceAll(/(<\/ol>|<\/ul>|<\/li>)/gi, "$1\n")
-			.split(/\n/);
+		let str = inputLines[0];
+		str = str.replaceAll(/<p>(.+?)<\/p>/gi, "$1\n");
+		if(isText) {
+			// str = str.replaceAll(/(<\/ol>|<\/ul>|<\/li>)/gi, "$1\n");
+			str = str.replaceAll(/(<\/ol>|<\/ul>)/gi, "$1\n");
+		}
+		inputLines = str.split(/\n/);
 	}
 	const outputLines: string[] = [];
 
@@ -252,12 +255,14 @@ function convertTextToMarkdown(text: string, isText: boolean): string {
 		}
 
 		if(processedLine !== null) {
-			if(processedLine.endsWith("</ol>") || processedLine.endsWith("</ul>") || processedLine.endsWith("</li>")) {
-				outputLines.push(processedLine);
-			} else if(isText) {
-				outputLines.push(`<p>${processedLine}</p>`);
+			if(isText) {
+				if(processedLine.endsWith("</ol>") || processedLine.endsWith("</ul>") || processedLine.endsWith("</li>")) {
+					outputLines.push(processedLine);
+				} else {
+					outputLines.push(`<p>${processedLine}</p>`);
+				}
 			} else {
-				outputLines.push(`${processedLine}`);
+				outputLines.push(processedLine);
 			}
 		}
 	}
