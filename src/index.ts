@@ -12,7 +12,7 @@ import {
 // Types
 // ---
 
-type ContentItem = Text | Shape | StickyNote | Card;
+export type ContentItem = Text | Shape | StickyNote | Card;
 
 // ---
 // Globals
@@ -53,6 +53,33 @@ function setItemContent(item: ContentItem, content: string) {
 		item.title = content;
 	} else {
 		item.content = content;
+	}
+}
+
+function setItemMonoFont(item: ContentItem, isMono: boolean) {
+	if(item.type === "text" || item.type === "shape") {
+		item.style.fontFamily = isMono ? "roboto_mono" : "arial";
+		item.style.fontSize = isMono ? 12 : 14;
+	}
+}
+
+// ---
+// markdown config
+// ---
+
+export async function hasMarkdownEnabled(item: Item) {
+	return typeof (await item.getMetadata(MARKDOWN_META_KEY)) === "string";
+}
+
+export async function enableMarkdown(item: ContentItem) {
+	if(!(await hasMarkdownEnabled(item))) {
+		await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
+	}
+}
+
+export async function disableMarkdown(item: ContentItem) {
+	if(await hasMarkdownEnabled(item)) {
+		await item.setMetadata(MARKDOWN_META_KEY, null);
 	}
 }
 
@@ -111,6 +138,7 @@ async function initSelectionEvents() {
 			if(!event.items.some(oldItem => oldItem.id === item.id) && await hasMarkdownEnabled(item)) {
 				await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
 				setItemContent(item, convertTextToMarkdown(getItemContent(item), item.type === "text"));
+				setItemMonoFont(item, false);
 				await item.sync();
 			}
 		});
@@ -123,6 +151,7 @@ async function initSelectionEvents() {
 			selectedTextItems.push(item);
 			if(await hasMarkdownEnabled(item)) {
 				setItemContent(item, await item.getMetadata(MARKDOWN_META_KEY));
+				setItemMonoFont(item, true);
 				return true;
 			}
 			return false;
@@ -135,20 +164,20 @@ async function initSelectionEvents() {
  */
 async function initActions() {
 	registerAction(
-		"enable-srd-markdown",
-		"Enable Markdown",
-		"Converts the text into the custom markdown format.",
-		"pen",
-		onMarkdownEnable
+		"magic-markdown-options",
+		"Markdown Options",
+		"Configure the Magic Markdown options for the item.",
+		"sparks-filled",
+		openMarkdownOptions
 	);
 
-	registerAction(
-		"disable-srd-markdown",
-		"Disable Markdown",
-		"Converts the text into editable format.",
-		"pen",
-		onMarkdownDisable
-	);
+	// registerAction(
+	// 	"disable-srd-markdown",
+	// 	"Disable Markdown",
+	// 	"Converts the text into editable format.",
+	// 	"pen",
+	// 	onMarkdownDisable
+	// );
 }
 
 /**
@@ -186,8 +215,14 @@ async function registerAction(id: string, name: string, description: string, ico
 	);
 }
 
-async function hasMarkdownEnabled(item: Item) {
-	return typeof (await item.getMetadata(MARKDOWN_META_KEY)) === "string";
+async function openMarkdownOptions(event: CustomEvent) {
+	if(event.items.length === 1) {
+		await miro.board.ui.openModal({
+			width: 300,
+			height: 150,
+			url: 'options.html?itemId=' + event.items[0].id
+		});
+	}
 }
 
 /**
@@ -197,9 +232,7 @@ async function hasMarkdownEnabled(item: Item) {
  */
 async function onMarkdownEnable(event: CustomEvent) {
 	forEachItemWithContent(event.items, async item => {
-		if(!(await hasMarkdownEnabled(item))) {
-			await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
-		}
+		await enableMarkdown(item);
 		return false;
 	});
 }
