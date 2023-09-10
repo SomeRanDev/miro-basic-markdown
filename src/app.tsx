@@ -6,7 +6,7 @@ const App: React.FC = () => {
 		<div style={{ display: "flex", flexDirection: "column" }}>
 			Welcome to Basic Markdown!
 			<br/><br/>
-			Check out the <a href="https://github.com/SomeRanDev/miro-basic-markdown">source code on Github.</a>
+			Check out the <a target="_blank" href="https://github.com/SomeRanDev/miro-basic-markdown">source code on Github.</a>
 			<h2>Instructions</h2>
 			Simply run the "Enable Markdown" action on any Text, Shape, or Sticky Note.
 			<br/><br/>
