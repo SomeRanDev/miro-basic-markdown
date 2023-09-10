@@ -218,8 +218,8 @@ async function registerAction(id: string, name: string, description: string, ico
 async function openMarkdownOptions(event: CustomEvent) {
 	if(event.items.length === 1) {
 		await miro.board.ui.openModal({
-			width: 300,
-			height: 150,
+			width: 600,
+			height: 300,
 			url: 'options.html?itemId=' + event.items[0].id
 		});
 	}
