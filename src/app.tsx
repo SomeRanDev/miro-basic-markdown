@@ -45,6 +45,10 @@ const App: React.FC = () => {
 					<td>* bullet point</td>
 					<td>• bullet point</td>
 				</tr>
+				<tr>
+					<td>[link](https://miro.com)</td>
+					<td><a target="_blank" href="https://miro.com">link</a></td>
+				</tr>
 			</table>
 		</div>
 	);

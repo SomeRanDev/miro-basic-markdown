@@ -288,6 +288,9 @@ function convertLineToMarkdown(text: string): string {
 		// ~strikethrough~
 		.replaceAll(/\~([^~]+)\~/gi, "<s>$1</s>")
 
+		// [link](https://miro.com)
+		.replaceAll(/\[([^\]]+)\]\(([^)]+)\)/gi, "<a href=\"$2\">$1</a>")
+
 		// [ ] unchecked
 		.replaceAll(/\[ \]/gi, "🔲")
 
