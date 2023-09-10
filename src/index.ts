@@ -178,7 +178,7 @@ async function registerAction(id: string, name: string, description: string, ico
 					{ type: "text" },
 					{ type: "shape" },
 					{ type: "sticky_note" },
-					{ type: "card" },
+					// { type: "card" },
 				]
 			},
 			"contexts": { "item": {} }
