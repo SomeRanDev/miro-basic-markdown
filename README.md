@@ -1,10 +1,10 @@
-## Somerandev Utils
+# Basic Markdown
 
-**&nbsp;ℹ&nbsp;Note**:
+A Miro utility app that automatically converts Markdown content in text items to a Miro-friendly representation.
 
-- We recommend a Chromium-based web browser for local development with HTTP. \
-  Safari enforces HTTPS; therefore, it doesn't allow localhost through HTTP.
-- For more information, visit our [developer documentation](https://developers.miro.com).
+Once installed on a board, execute the "Enable Markdown" action on a Text, Shape, or Sticky Note item. Whenever the enabled item is selected, its content will plain text with Markdown markup syntax. Once the item is unselected, the text will be converted into a visual representation of the Markdown formatting using Miro-safe HTML and emojis.
+
+# Testing and Building
 
 ### How to start locally
 
@@ -24,29 +24,3 @@
 - Run `npm run build`. \
   This generates a static output inside [`dist/`](./dist), which you can host on a static hosting
   service.
-
-### Folder structure
-
-<!-- The following tree structure is just an example -->
-
-```
-.
-├── src
-│  ├── assets
-│  │  └── style.css
-│  ├── app.tsx      // The code for the app lives here
-│  └── index.ts    // The code for the app entry point lives here
-├── app.html       // The app itself. It's loaded on the board inside the 'appContainer'
-└── index.html     // The app entry point. This is what you specify in the 'App URL' box in the Miro app settings
-```
-
-### About the app
-
-This sample app provides you with boilerplate setup and configuration that you can further customize to build your own app.
-
-<!-- describe shortly the purpose of the sample app -->
-
-Built using [`create-miro-app`](https://www.npmjs.com/package/create-miro-app).
-
-This app uses [Vite](https://vitejs.dev/). \
-If you want to modify the `vite.config.js` configuration, see the [Vite documentation](https://vitejs.dev/guide/).
