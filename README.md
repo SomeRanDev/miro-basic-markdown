@@ -1,4 +1,4 @@
-# Basic Markdown
+# Magic Markdown
 
 A Miro utility app that automatically converts Markdown content in text items to a Miro-friendly representation.
 
