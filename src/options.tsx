@@ -15,13 +15,17 @@ import {LabeledCheckbox} from "./checkbox";
 
 import {
 	ContentItem,
+
 	hasMarkdownEnabled,
-	enableMarkdown,
-	disableMarkdown
+	setMarkdownEnabled,
+
+	hasAutoBorder,
+	setAutoBorderConfig
 } from "./index";
 
 type ItemData = {
-	markdown: boolean
+	markdown: boolean,
+	autoBorder: boolean
 }
 
 const darkTheme = createTheme({
@@ -32,7 +36,8 @@ const darkTheme = createTheme({
 
 const App: React.FC = () => {
 	const [itemData, setItemData] = React.useState<ItemData>({
-		markdown: false
+		markdown: false,
+		autoBorder: false,
 	});
 
 	const [item, setItem] = React.useState<ContentItem | null>(null);
@@ -50,7 +55,8 @@ const App: React.FC = () => {
 		(async () => {
 			const item = (await miro.board.getById(id)) as ContentItem;
 			setItemData({
-				markdown: await hasMarkdownEnabled(item)
+				markdown: await hasMarkdownEnabled(item),
+				autoBorder: await hasAutoBorder(item)
 			});
 			setItem(item);
 		})();
@@ -58,11 +64,13 @@ const App: React.FC = () => {
 
 	const onMarkdownChecked = (checked: boolean) => {
 		if(item !== null) {
-			if(checked) {
-				enableMarkdown(item);
-			} else {
-				disableMarkdown(item);
-			}
+			setMarkdownEnabled(item, checked);
+		}
+	}
+
+	const onAutoborderChecked = (checked: boolean) => {
+		if(item !== null) {
+			setAutoBorderConfig(item, checked);
 		}
 	}
 
@@ -71,18 +79,27 @@ const App: React.FC = () => {
 		return <>Loading...</>;
 	}
 
-	const tableMembers: [React.ReactElement, string][] = [
+	const tableMembers: [String, React.ReactElement, string][] = [
 		[
+			"markdown",
 			<LabeledCheckbox id="markdown" label="Markdown" checked={itemData.markdown} onChecked={onMarkdownChecked} />,
 			"Required for all the other features to work. Enables the automatic Markdown conversion."
 		]
-	]
+	];
+
+	if(item.type === "shape") {
+		tableMembers.push([
+			"auto-border",
+			<LabeledCheckbox id="auto-border" label="Automatic Border" checked={itemData.autoBorder} onChecked={onAutoborderChecked} />,
+			"Exclusive feature for Shapes. If enabled, the border will toggle between preset styles automatically based on whether all the checkmarks are filled in the Markdown."
+		]);
+	}
 
 	return (
 		<ThemeProvider theme={darkTheme}>
 		<div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
 			<h2><b>Magic Markdown</b> Options for "{item.type}" Item</h2>
-			<TableContainer component={Paper}>
+			<TableContainer component={Paper} style={{ flexDirection: "row" }}>
 				<Table aria-label="a dense table">
 					<TableHead>
 						<TableRow>
@@ -91,18 +108,16 @@ const App: React.FC = () => {
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						<TableRow>
-							{tableMembers.map(m => {
-								return <>
-									<TableCell component="th" scope="row">
-										{m[0]}
-									</TableCell>
-									<TableCell>
-										{m[1]}
-									</TableCell>
-								</>
-							})}
-						</TableRow>
+						{tableMembers.map(m => {
+							return <TableRow key={m[0]}>
+								<TableCell component="th" scope="row">
+									{m[1]}
+								</TableCell>
+								<TableCell>
+									{m[2]}
+								</TableCell>
+							</TableRow>
+						})}
 					</TableBody>
 				</Table>
 			</TableContainer>

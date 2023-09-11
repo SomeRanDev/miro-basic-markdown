@@ -5,7 +5,9 @@ import {
 	Shape,
 	StickyNote,
 	Item,
-	SelectionUpdateEvent
+	SelectionUpdateEvent,
+	StrokeStyle,
+	Json
 } from "@mirohq/websdk-types";
 
 // ---
@@ -18,7 +20,8 @@ export type ContentItem = Text | Shape | StickyNote | Card;
 // Globals
 // ---
 
-const MARKDOWN_META_KEY = "original-markdown";
+const MARKDOWN_META_KEY = "mm-original-text";
+const AUTOBORDER_META_KEY = "mm-autoborder";
 
 // ---
 // init
@@ -68,19 +71,81 @@ function setItemMonoFont(item: ContentItem, isMono: boolean) {
 // ---
 
 export async function hasMarkdownEnabled(item: Item) {
-	return typeof (await item.getMetadata(MARKDOWN_META_KEY)) === "string";
+	return typeof (await getRawMarkdownContent(item)) === "string";
 }
 
-export async function enableMarkdown(item: ContentItem) {
-	if(!(await hasMarkdownEnabled(item))) {
-		await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
+export async function getRawMarkdownContent(item: Item): Promise<string> {
+	return item.getMetadata(MARKDOWN_META_KEY);
+}
+
+export async function setMarkdownEnabled(item: ContentItem, enabled: boolean) {
+	if((await hasMarkdownEnabled(item)) === !enabled) {
+		await item.setMetadata(MARKDOWN_META_KEY, enabled ? getItemContent(item) : null);
 	}
 }
 
-export async function disableMarkdown(item: ContentItem) {
-	if(await hasMarkdownEnabled(item)) {
-		await item.setMetadata(MARKDOWN_META_KEY, null);
+// ---
+// automatic border config
+// ---
+
+export async function hasAutoBorder(item: ContentItem): Promise<boolean> {
+	if(item.type === "shape") {
+		return (await item.getMetadata(AUTOBORDER_META_KEY)) === true;
 	}
+	return false;
+}
+
+export async function setAutoBorderConfig(item: ContentItem, autoBorder: boolean) {
+	await item.setMetadata(AUTOBORDER_META_KEY, autoBorder);
+}
+
+let borderOptions: {
+	loaded: number,
+	incompleteColor: string,
+	incompleteStyle: StrokeStyle,
+	completeColor: string,
+	completeStyle: StrokeStyle
+} = {
+	loaded: -1,
+	incompleteColor: "#ff7777",
+	incompleteStyle: "normal",
+	completeColor: "#77ff77",
+	completeStyle: "dashed"
+}
+
+export async function refreshAutoBorder(item: Shape) {
+	const loaded = await miro.board.getAppData("border-options-loaded");
+	if(typeof loaded === "number" && borderOptions.loaded !== loaded) {
+		borderOptions = {
+			loaded: loaded,
+			incompleteColor: validateBorderColor(await miro.board.getAppData("incomplete-border-color"), "#ff7777"),
+			incompleteStyle: validateStrokeStyle(await miro.board.getAppData("incomplete-border-style")),
+			completeColor: validateBorderColor(await miro.board.getAppData("complete-border-color"), "#77ff77"),
+			completeStyle: validateStrokeStyle(await miro.board.getAppData("complete-border-style"))
+		};
+	}
+
+	const hasEmptyCheckbox = (await getRawMarkdownContent(item)).includes("[ ]");
+	if(!hasEmptyCheckbox) {
+		item.style.borderColor = borderOptions.completeColor;
+		item.style.borderStyle = borderOptions.completeStyle;
+	} else {
+		item.style.borderColor = borderOptions.incompleteColor;
+		item.style.borderStyle = borderOptions.incompleteStyle;
+	}
+}
+
+function validateBorderColor(input: Json, defValue: string): string {
+	if(typeof input !== "string") return defValue;
+	return input;
+}
+
+function validateStrokeStyle(input: Json): StrokeStyle {
+	if(typeof input !== "string") return "normal";
+	if(input === "normal" || input === "dashed" || input === "dotted") {
+		return input;
+	}
+	return "normal";
 }
 
 /**
@@ -139,6 +204,9 @@ async function initSelectionEvents() {
 				await item.setMetadata(MARKDOWN_META_KEY, getItemContent(item));
 				setItemContent(item, convertTextToMarkdown(getItemContent(item), item.type === "text"));
 				setItemMonoFont(item, false);
+				if(await hasAutoBorder(item)) {
+					await refreshAutoBorder(<Shape>item);
+				}
 				await item.sync();
 			}
 		});
@@ -219,7 +287,7 @@ async function openMarkdownOptions(event: CustomEvent) {
 	if(event.items.length === 1) {
 		await miro.board.ui.openModal({
 			width: 600,
-			height: 300,
+			height: 400,
 			url: 'options.html?itemId=' + event.items[0].id
 		});
 	}
@@ -232,7 +300,7 @@ async function openMarkdownOptions(event: CustomEvent) {
  */
 async function onMarkdownEnable(event: CustomEvent) {
 	forEachItemWithContent(event.items, async item => {
-		await enableMarkdown(item);
+		await setMarkdownEnabled(item, true);
 		return false;
 	});
 }
@@ -244,9 +312,7 @@ async function onMarkdownEnable(event: CustomEvent) {
  */
 async function onMarkdownDisable(event: CustomEvent) {
 	forEachItemWithContent(event.items, async item => {
-		if(await hasMarkdownEnabled(item)) {
-			await item.setMetadata(MARKDOWN_META_KEY, null);
-		}
+		setMarkdownEnabled(item, false);
 		return false;
 	});
 }
